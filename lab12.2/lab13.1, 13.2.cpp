@@ -1,11 +1,36 @@
 #include <iostream>
 #include <cmath>
 using namespace std;
+float eps = 0.000001;
+
+int rankOfMatrix(int n, int m, float** A) {//взял с чата гпт
+    int rank = 0; // Инициализируем ранг
+
+    for (int i = 0; i < m; i++) {
+        bool isNonZeroRow = false; // Флаг для проверки ненулевой строки
+
+        // Проверяем, есть ли ненулевой элемент в строке
+        for (int j = 0; j < n; j++) {
+            if (isnan(A[i][j])) return -1;//если не получилось привести к ступенчатому виду
+            if (abs(A[i][j]) > eps) { // Проверка на NAN и ноль
+                isNonZeroRow = true;
+                break;
+            }
+        }
+
+        // Если строка ненулевая, увеличиваем ранг
+        if (isNonZeroRow) {
+            rank++;
+        }
+    }
+    cout << rank << endl;
+    return rank; // Возвращаем ранг матрицы
+}
 
 int solver(int n, int m, float** A, float* X) {
     int i, j, k, v;
     bool w;
-    float c, eps = 0.000001;
+    float c;
 
     for (i = 0; i < n - 1; i++)
     {
@@ -28,46 +53,31 @@ int solver(int n, int m, float** A, float* X) {
                 A[k][j] -= c * A[i][j];
         }
     }
-
-    // запись промежуточного результата в файл
+    
     FILE* fm = fopen("ou.txt", "at");
-    for (i = 0; i < m; i++) {
-        for (j = 0; j <= n; j++) fprintf(fm, "%8.3f", A[i][j]);
+    k = rankOfMatrix(n, m, A);
+    if (k == -1) fprintf(fm, "There is no way to reduce the matrix to a stepwise form\n\n");
+    else {
+        // запись ступенчатого вида в файл
+        for (i = 0; i < m; i++) {
+            for (j = 0; j <= n; j++) fprintf(fm, "%8.3f", A[i][j]);
+            fprintf(fm, "\n");
+        }
         fprintf(fm, "\n");
+        fclose(fm);
     }
-    fclose(fm);
 
     // Обратный ход
-    for (i = n - 1; i >= 0; i--) {
-        if (abs(A[i][i]) < eps) {
-            // Проверка на наличие свободных переменных
-            w = true;
-            for (j = 0; j < n; j++)
-            {
-                if (abs(A[i][j]) > eps)
-                {
-                    w = false;
-                    break;
-                }
+    if (k < m) return 0;//ранг меньше => единственного решения нет
+    if (k == m)//ранг равен колву неизвестных значит решение есть
+        for (i = n - 1; i >= 0; i--) {
+            for (k = 0; k < i; k++) {
+                c = A[k][i] / A[i][i];
+                A[k][n] -= c * A[i][n];
             }
-            if (w && abs(A[i][n]) > eps) return 0; // Нет решений
-            continue; // Свободная переменная
         }
-        for (k = 0; k < i; k++) {
-            c = A[k][i] / A[i][i];
-            A[k][n] -= c * A[i][n];
-        }
-    }
-
     // Решение
-    for (i = 0; i < n; i++) {
-        if (abs(A[i][i]) > eps) {
-            X[i] = A[i][n] / A[i][i];
-        }
-        else {
-            X[i] = NAN;
-        }
-    }
+    for (i = 0; i < n; i++) X[i] = A[i][n] / A[i][i];
 
     return 1;
 }
